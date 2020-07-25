@@ -769,7 +769,8 @@ class Writer:
         # :todo: Certain exceptions in the call to ``.next()`` or the
         # following try would indicate no row data supplied.
         # Should catch.
-        i,row = enumrows.next()
+        #i,row = enumrows.next()	
+        i, row = next(enumrows) #modified by gsyan
         try:
             # If this fails...
             extend(row)
@@ -1631,7 +1632,8 @@ class Reader:
                 out.extend(map(lambda i: mask&(o>>i), shifts))
             return out[:width]
 
-        return itertools.imap(asvalues, rows)
+        #return itertools.imap(asvalues, rows)
+        return map(asvalues, rows)	#modified by gsyan	
 
     def serialtoflat(self, bytes, width=None):
         """Convert serial format (byte stream) pixel data to flat row
@@ -1882,7 +1884,8 @@ class Reader:
             while True:
                 try:
                     type, data = self.chunk(lenient=lenient)
-                except ValueError, e:
+                #except ValueError, e:
+                except ValueError as e: #modified by gsyan
                     raise ChunkError(e.args[0])
                 if type == 'IEND':
                     # http://www.w3.org/TR/PNG/#11IEND
@@ -1953,6 +1956,7 @@ class Reader:
         x, y, pixel, meta = self.read()
         arraycode = 'BH'[meta['bitdepth']>8]
         pixel = array(arraycode, itertools.chain(*pixel))
+        self.file.close() #add by gsyan
         return x, y, pixel, meta
 
     def palette(self, alpha='natural'):
@@ -2746,6 +2750,7 @@ def _main(argv):
 if __name__ == '__main__':
     try:
         _main(sys.argv)
-    except Error, e:
+    #except Error, e:
+    except Error as e: #modified by gsyan
         print >>sys.stderr, e
 
