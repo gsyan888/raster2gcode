@@ -1,7 +1,7 @@
 # Change Log
- - 2020.07.23 
+- 2020.07.23 
   - support Inkscape 0.92 and 1.0
- - 2020.07.25
+- 2020.07.25
   - grayscle_type [0.21R + 0.71G + 0.07B] bugfix
 
 
