@@ -6,7 +6,7 @@
 
 
 ********************
-Original decription
+Original description
 ********************
 
 # Various Inkscape extensions
