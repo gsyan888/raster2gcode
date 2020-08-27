@@ -66,6 +66,9 @@
 				<_item value="3">Halftone</_item>
 				<_item value="4">Halftone row</_item>
 				<_item value="5">Halftone column</_item>
+				<_item value="7">Halftone Error diffusion *</_item> <!-- add by gsyan -->
+				<_item value="8">Halftone Ordered diffusion *</_item> <!-- add by gsyan -->
+				<_item value="9">Halftone Patterning 3x3 *</_item> <!-- add by gsyan -->
 				<_item value="6">Grayscale</_item>
 			</param>
 			
@@ -128,7 +131,7 @@
 			<param name="Description" type="description"  xml:space="preserve">
 created by 305 Engineering
 * modified by gsyan 
-* last updated : 2020.07.23
+* last updated : 2020.08.27
 			</param>
 		</page>
 	</param>
