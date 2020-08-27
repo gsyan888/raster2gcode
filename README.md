@@ -3,7 +3,9 @@
   - support Inkscape 0.92 and 1.0
 - 2020.07.25
   - grayscale_type [0.21R + 0.71G + 0.07B] bugfix
-
+- 2020.08.27
+  - Halftone, Halftone row, Halftone column bugfix
+  - B/W conversion add 3 Halftone algorithm (Error diffusion,Ordered diffusion,Patterning 3x3 : source code from https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters )
 
 ********************
 Original description
