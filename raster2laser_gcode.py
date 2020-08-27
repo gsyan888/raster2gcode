@@ -307,6 +307,15 @@ class GcodeExport(inkex.Effect):
     def getLaserPowerValue(self,oldValue) :
         #return ( self.options.laser_mini_power + (255 - self.options.laser_mini_power)*oldValue/255 )
         return ( self.options.laser_mini_power + (self.options.laser_max_power - self.options.laser_mini_power)*oldValue/255 )
+    
+    # by gsyan 
+    def getPixelValidValue(self,oldValue) :
+        if oldValue < 0 :
+            oldValue = 0
+        if oldValue > 255 :
+            oldValue = 255
+        return oldValue
+    
     #
     #intensity code from :
     #   https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters/blob/master/Raster_to_Raster/ordered_dithering.py
@@ -324,6 +333,10 @@ class GcodeExport(inkex.Effect):
         for i in range(10):
             l1 = mini+level*i
             l2 = l1+level
+            if i==0 :		#first level set l1 to mini, modified by gsyan
+                l1 = mini
+            if i==9 :		#last lvel set l2 to maxi, modified by gsyan
+                l2 = maxi
             for j in range(len(arr)):
                 for k in range(len(arr[0])):
                     if(arr[j][k] >= l1 and arr[j][k] <= l2):
@@ -544,16 +557,10 @@ class GcodeExport(inkex.Effect):
                     else :
                         matrice_BN[y][x] = 0
                     diffused_error = neighbour_index - matrice_BN[y][x]
-                    matrice_BN[y][x+1] = int(matrice_BN[y][x+1] + 7/16.0 * diffused_error)
-                    matrice_BN[y+1][x-1] = int(matrice_BN[y+1][x-1] + 3/16.0 * diffused_error)
-                    matrice_BN[y+1][x] = int(matrice_BN[y+1][x] + 5/16.0 * diffused_error)
-                    matrice_BN[y+1][x+1] =int(matrice_BN[y+1][x+1] + 1/16.0 * diffused_error)            
-            for y in range(h): 
-                for x in range(w): 
-                    if matrice_BN[y][x] < 1:
-                        matrice_BN[y][x] = 0
-                    if matrice_BN[y][x] > 255:
-                        matrice_BN[y][x] = 255
+                    matrice_BN[y][x+1] = self.getPixelValidValue( int(matrice_BN[y][x+1] + 7 * diffused_error/16.0) )
+                    matrice_BN[y+1][x-1] = self.getPixelValidValue( int(matrice_BN[y+1][x-1] + 3 * diffused_error/16.0) )
+                    matrice_BN[y+1][x] = self.getPixelValidValue( int(matrice_BN[y+1][x] + 5 * diffused_error/16.0) )
+                    matrice_BN[y+1][x+1] = self.getPixelValidValue( int(matrice_BN[y+1][x+1] + 1 * diffused_error/16.0) )
 
         elif self.options.conversion_type == 8:
             #Halftone ordered diffusion
