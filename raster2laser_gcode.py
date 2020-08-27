@@ -210,6 +210,12 @@ class GcodeExport(inkex.Effect):
                 suffix = "_Hrow_"
             elif self.options.conversion_type == 5:
                 suffix = "_Hcol_"
+            elif self.options.conversion_type == 7:
+                suffix = "_H_error_"
+            elif self.options.conversion_type == 8:
+                suffix = "_H_ordered_"
+            elif self.options.conversion_type == 9:
+                suffix = "_H_pattern_"
             else:
                 if self.options.grayscale_resolution == 1:
                     suffix = "_Gray_256_"
@@ -301,6 +307,28 @@ class GcodeExport(inkex.Effect):
     def getLaserPowerValue(self,oldValue) :
         #return ( self.options.laser_mini_power + (255 - self.options.laser_mini_power)*oldValue/255 )
         return ( self.options.laser_mini_power + (self.options.laser_max_power - self.options.laser_mini_power)*oldValue/255 )
+    #
+    #intensity code from :
+    #   https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters/blob/master/Raster_to_Raster/ordered_dithering.py
+    #
+    def intensity(self, arr):
+        #  calcluates intensity of a pixel from 0 to 9
+        mini = 999
+        maxi = 0
+        for i in range(len(arr)):
+            for j in range(len(arr[0])):
+                maxi = max(arr[i][j],maxi)
+                mini = min(arr[i][j],mini)
+        level = float(float(maxi-mini)/float(10));
+        brr = [[0]*len(arr[0]) for i in range(len(arr))]
+        for i in range(10):
+            l1 = mini+level*i
+            l2 = l1+level
+            for j in range(len(arr)):
+                for k in range(len(arr[0])):
+                    if(arr[j][k] >= l1 and arr[j][k] <= l2):
+                        brr[j][k]=i
+        return brr
 
     def PNGtoGcode(self,pos_file_png_exported,pos_file_png_BW,pos_file_gcode):
         
@@ -418,8 +446,10 @@ class GcodeExport(inkex.Effect):
             Step3 = [[B,B,N,B,B],[B,N,N,N,B],[N,N,N,N,N],[B,N,N,N,B],[B,B,N,B,B]]
             Step4 = [[B,N,N,N,B],[N,N,N,N,N],[N,N,N,N,N],[N,N,N,N,N],[B,N,N,N,B]]
             
-            for y in range(h/5): 
-                for x in range(w/5): 
+            #for y in range(h/5): 
+            for y in range(h//5):  #modified by gsyan  
+                #for x in range(w/5): 
+                for x in range(w//5):  #modified by gsyan  
                     media = 0
                     for y2 in range(5):
                         for x2 in range(5):
@@ -449,7 +479,8 @@ class GcodeExport(inkex.Effect):
             Step4r = [N,N,N,N,B]
 
             for y in range(h): 
-                for x in range(w/5): 
+                # for x in range(w/5): 
+                for x in range(w//5): #modified by gsyan
                     media = 0
                     for x2 in range(5):
                         media +=  matrice[y][x*5+x2]
@@ -476,7 +507,8 @@ class GcodeExport(inkex.Effect):
             Step3c = [B,N,N,N,B]
             Step4c = [N,N,N,N,B]
 
-            for y in range(h/5):
+            #for y in range(h/5):
+            for y in range(h//5): #modified by gsyan
                 for x in range(w):
                     media = 0
                     for y2 in range(5):
@@ -494,8 +526,108 @@ class GcodeExport(inkex.Effect):
                         if media >= 10 and media < 70:
                             matrice_BN[y*5+y3][x] =    Step4c[y3]        
                         if media >= 0 and media < 10:
-                            matrice_BN[y*5+y3][x] = N            
-            
+                            matrice_BN[y*5+y3][x] = N
+        #
+        #add by gsyan 
+        #
+        #code from : 
+        #   https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters
+        #
+        elif self.options.conversion_type == 7:
+            #Halftone Error diffusion
+            matrice_BN = matrice
+            for y in range(0,h-1):
+                for x in range(1, w-1):
+                    neighbour_index = matrice_BN[y][x]
+                    if(neighbour_index>127) :
+                        matrice_BN[y][x] = 255
+                    else :
+                        matrice_BN[y][x] = 0
+                    diffused_error = neighbour_index - matrice_BN[y][x]
+                    matrice_BN[y][x+1] = int(matrice_BN[y][x+1] + 7/16.0 * diffused_error)
+                    matrice_BN[y+1][x-1] = int(matrice_BN[y+1][x-1] + 3/16.0 * diffused_error)
+                    matrice_BN[y+1][x] = int(matrice_BN[y+1][x] + 5/16.0 * diffused_error)
+                    matrice_BN[y+1][x+1] =int(matrice_BN[y+1][x+1] + 1/16.0 * diffused_error)            
+            for y in range(h): 
+                for x in range(w): 
+                    if matrice_BN[y][x] < 1:
+                        matrice_BN[y][x] = 0
+                    if matrice_BN[y][x] > 255:
+                        matrice_BN[y][x] = 255
+
+        elif self.options.conversion_type == 8:
+            #Halftone ordered diffusion
+            #
+            #code from :
+            #   https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters/blob/master/Raster_to_Raster/ordered_dithering.py
+            #			
+            arr = matrice
+            brr = self.intensity(arr)
+            crr = [[8, 3, 4], [6, 1, 2], [7, 5, 9]]
+            for y in range(h):
+                for x in range(w):
+                    if(matrice[y][x] < 255) :
+                        if(brr[y][x] > crr[y%3][x%3]):
+                            matrice_BN[y][x] = 255
+                        else:
+                            matrice_BN[y][x] = 0 
+                    else :
+                        matrice_BN[y][x] = 255 
+        
+        elif self.options.conversion_type == 9:
+            #Halftone Patterning (3x3)
+            #
+            #code from :
+            #   https://github.com/abhishek-sehgal954/Inkscape_extensions_for_halftone_filters/blob/master/Raster_to_Raster/patterning.py
+            #
+            # based on the intensity maps pixel to the corresponding block of 3*3  
+            #  ---   ---   ---   -X-   -XX   -XX   -XX   -XX   XXX   XXX
+            #  ---   -X-   -XX   -XX   -XX   -XX   XXX   XXX   XXX   XXX
+            #  ---   ---   ---   ---   ---   -X-   -X-   XX-   XX-   XXX
+            #  9     8     7     6     5     4     3     2     1     0  
+            #  X = 0
+            #  - = 255
+            #  Therefore intensity 0 being the blackest block.
+            matrice_BN = matrice			
+            arr = matrice
+            brr = self.intensity(arr)
+            gray_level = [[[0,0,0],[0,0,0],[0,0,0]] for i in range(10)]
+            gray_level[0] = [[0,0,0],[0,0,0],[0,0,0]]
+            gray_level[1] = [[0,255,0],[0,0,0],[0,0,0]]
+            gray_level[2] = [[0,255,0],[0,0,0],[0,0,255]]
+            gray_level[3] = [[255,255,0],[0,0,0],[0,0,255]]
+            gray_level[4] = [[255,255,0],[0,0,0],[255,0,255]]
+            gray_level[5] = [[255,255,255],[0,0,0],[255,0,255]]
+            gray_level[6] = [[255,255,255],[0,0,255],[255,0,255]]
+            gray_level[7] = [[255,255,255],[0,0,255],[255,255,255]]
+            gray_level[8] = [[255,255,255],[255,0,255],[255,255,255]]
+            gray_level[9] = [[255,255,255],[255,255,255],[255,255,255]]
+            for y in range(len(brr)//3):
+                for x in range(len(brr[y])//3):
+                    level = 0
+                    for i in range(3):
+                        for j in range(3):
+                            level = level + brr[y*3+i][x*3+j]
+                    level = level//9
+                    for i in range(3):
+                        for j in range(3):
+                            matrice_BN[y*3+i][x*3+j] =  gray_level[level][i][j]
+            #crr = numpy.zeros((len(arr)*3,len(arr[0])*3))
+            #crr = [[0 for i in range(w*3)]for j in range(h*3)]
+            #for y in range(len(brr)):
+            #    for x in range(len(brr[y])):
+            #        new_y = y+2*(y-1)
+            #        new_x = x+2*(x-1)
+            #        for i in range(3):
+            #            for j in range(3):
+            #                #inkex.errormsg([new_y+i , new_x+j, brr[y][x], i, j ])
+            #                crr[new_y+i][new_x+j] = gray_level[brr[y][x]][i][j]
+            #test_file_png = os.path.join(self.options.directory,"test-zzzz.png") 
+            #test_file_img_BN = open(test_file_png, 'wb') #Creo il file
+            #test_Costruttore_img = png.Writer(w*3, h*3, greyscale=True, bitdepth=8) #Impostazione del file immagine
+            #test_Costruttore_img.write(test_file_img_BN, crr) #Costruttore del file immagine
+            #test_file_img_BN.close()    #Chiudo il file
+			
         else:
             #Grayscale
             if self.options.grayscale_resolution == 1:
